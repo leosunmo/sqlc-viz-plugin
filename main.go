@@ -52,9 +52,9 @@ var migrationDir = pflag.StringP("migrations", "m", "", "path to migration files
 func main() {
 	pflag.Parse()
 	if *migrationDir != "" {
-		err := runLocal()
+		err := runLocal(*migrationDir)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed: %s", err.Error())
+			fmt.Fprintf(os.Stderr, "failed: %s\n", err.Error())
 			os.Exit(1)
 		}
 		return
@@ -63,10 +63,10 @@ func main() {
 	runPlugin()
 }
 
-func runLocal() error {
+func runLocal(dir string) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
-	files := walkMigrations([]string{"migrations"})
+	files := walkMigrations([]string{dir})
 	if len(files) == 0 {
 		return fmt.Errorf("unable to find any schemas")
 	}
@@ -287,36 +287,86 @@ func parseFile(path string, tables map[string]*Table, tableLevelFKs *[]FK) error
 			if tn == "" {
 				continue
 			}
-			_ = ensureTable(tables, sch, tn)
+			t := ensureTable(tables, sch, tn)
 			for _, n := range at.GetCmds() {
 				cmd := n.GetAlterTableCmd()
 				if cmd == nil {
 					continue
 				}
-				if cmd.GetSubtype() != pgquery.AlterTableType_AT_AddConstraint {
-					continue
-				}
-				con := cmd.GetDef().GetConstraint()
-				if con == nil {
-					continue
-				}
-				switch con.GetContype() {
-				case pgquery.ConstrType_CONSTR_PRIMARY:
-					for _, k := range nodeIdents(con.GetKeys()) {
-						markPK(tables[key(sch, tn)], k)
+				switch cmd.GetSubtype() {
+				case pgquery.AlterTableType_AT_AddColumn:
+					// Handle ADD COLUMN
+					if cd := cmd.GetDef().GetColumnDef(); cd != nil {
+						col := Column{Name: cd.GetColname(), Type: typeName(cd.GetTypeName())}
+						for _, rc := range cd.GetConstraints() {
+							c := rc.GetConstraint()
+							switch c.Contype {
+							case pgquery.ConstrType_CONSTR_PRIMARY:
+								col.PrimaryKey = true
+							case pgquery.ConstrType_CONSTR_UNIQUE:
+								col.Unique = true
+							case pgquery.ConstrType_CONSTR_FOREIGN:
+								dstS, dstT := pktable(c)
+								col.ForeignKey = &FK{
+									SrcCols:   []string{col.Name},
+									DstSchema: dstS, DstTable: dstT,
+									DstCols: nodeIdents(c.GetPkAttrs()),
+								}
+							}
+						}
+						t.Cols = upsertCol(t.Cols, col)
 					}
-				case pgquery.ConstrType_CONSTR_UNIQUE:
-					for _, k := range nodeIdents(con.GetKeys()) {
-						markUQ(tables[key(sch, tn)], k)
+				case pgquery.AlterTableType_AT_DropColumn:
+					// Handle DROP COLUMN
+					if cmd.GetName() != "" {
+						t.Cols = removeCol(t.Cols, cmd.GetName())
 					}
-				case pgquery.ConstrType_CONSTR_FOREIGN:
-					dstS, dstT := pktable(con)
-					*tableLevelFKs = append(*tableLevelFKs, FK{
-						SrcCols:   nodeIdents(con.GetFkAttrs()),
-						DstSchema: dstS, DstTable: dstT,
-						DstCols: nodeIdents(con.GetPkAttrs()),
-					})
+				case pgquery.AlterTableType_AT_AddConstraint:
+					con := cmd.GetDef().GetConstraint()
+					if con == nil {
+						continue
+					}
+					switch con.GetContype() {
+					case pgquery.ConstrType_CONSTR_PRIMARY:
+						for _, k := range nodeIdents(con.GetKeys()) {
+							markPK(tables[key(sch, tn)], k)
+						}
+					case pgquery.ConstrType_CONSTR_UNIQUE:
+						for _, k := range nodeIdents(con.GetKeys()) {
+							markUQ(tables[key(sch, tn)], k)
+						}
+					case pgquery.ConstrType_CONSTR_FOREIGN:
+						dstS, dstT := pktable(con)
+						*tableLevelFKs = append(*tableLevelFKs, FK{
+							SrcCols:   nodeIdents(con.GetFkAttrs()),
+							DstSchema: dstS, DstTable: dstT,
+							DstCols: nodeIdents(con.GetPkAttrs()),
+						})
+					}
 				}
+			}
+		}
+
+		if ds := s.GetDropStmt(); ds != nil {
+			// Handle DROP TABLE, DROP VIEW, etc.
+			switch ds.GetRemoveType() {
+			case pgquery.ObjectType_OBJECT_TABLE:
+				for _, obj := range ds.GetObjects() {
+					if list := obj.GetList(); list != nil {
+						if names := nodeIdents(list.GetItems()); len(names) > 0 {
+							sch := ""
+							tn := names[0]
+							if len(names) > 1 {
+								sch = names[0]
+								tn = names[1]
+							}
+							delete(tables, key(sch, tn))
+						}
+					}
+				}
+			case pgquery.ObjectType_OBJECT_VIEW:
+				// Views don't affect our table structure, but we track them for completeness
+				// Could add view tracking here if needed
 			}
 		}
 	}
@@ -455,6 +505,15 @@ func upsertCol(cols []Column, c Column) []Column {
 		}
 	}
 	return append(cols, c)
+}
+func removeCol(cols []Column, name string) []Column {
+	result := make([]Column, 0, len(cols))
+	for _, col := range cols {
+		if col.Name != name {
+			result = append(result, col)
+		}
+	}
+	return result
 }
 func markPK(t *Table, name string) {
 	for i := range t.Cols {
