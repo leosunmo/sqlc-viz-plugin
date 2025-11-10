@@ -1,0 +1,490 @@
+classes: {
+  table: {
+    shape: sql_table
+  }
+  enums: {
+    grid-rows: 2
+    grid-columns: 2
+  }
+  enum: {
+    shape: sql_table
+    style: {
+      stroke-dash: 5
+    }
+  }
+  views: {
+    grid-rows: 2
+    grid-columns: 2
+  }
+  view: {
+    shape: sql_table
+    style: {
+      stroke-dash: 5
+    }
+  }
+  domains: {
+    grid-rows: 2
+    grid-columns: 2
+  }
+  domain: {
+    shape: sql_table
+    style: {
+      stroke-dash: 5
+    }
+  }
+  composites: {
+    grid-rows: 2
+    grid-columns: 2
+  }
+  composite: {
+    shape: sql_table
+    style: {
+      stroke-dash: 5
+    }
+  }
+}
+account_balances: {
+  class: table
+  id: serial
+  id.constraint: primary_key
+  user_id: int4
+  user_id.constraint: unique foreign_key
+  current_balance: money_amount
+  currency: currency_code
+  credit_limit: money_amount
+  last_updated: timestamptz
+  balance_logic: current_balance >= 0 OR current_balance >= - credit_limit
+}
+comments: {
+  class: table
+  id: serial
+  id.constraint: primary_key
+  post_id: int4
+  post_id.constraint: foreign_key
+  author: text
+  body: text
+  created_at: timestamptz
+  author_email: email_address
+  reply_to_comment_id: int4
+  reply_to_comment_id.constraint: foreign_key
+  reply_to_comment_id -> id
+}
+financial_transactions: {
+  class: table
+  id: serial
+  id.constraint: primary_key
+  user_id: int4
+  user_id.constraint: foreign_key
+  amount: money_amount
+  currency: currency_code
+  transaction_type: text
+  description: short_text
+  processed_at: timestamptz
+  created_at: timestamptz
+  valid_transaction_type: "transaction_type IN ('credit', 'debit', 'transfer', 'refund')"
+  amount_sign_check: "(transaction_type IN ('credit', 'refund') AND amount > 0) OR (transaction_type IN ('debit', 'transfer') AND amount < 0)"
+  processing_time_check: processed_at >= created_at
+}
+locations: {
+  class: table
+  id: serial
+  id.constraint: primary_key
+  name: text
+  latitude: latitude
+  longitude: longitude
+  address: text
+  created_at: timestamptz
+}
+posts: {
+  class: table
+  id: serial
+  id.constraint: primary_key
+  user_id: int4
+  user_id.constraint: foreign_key
+  title: text
+  body: text
+  posted_at: timestamptz
+  is_published: bool
+  priority: priority_level
+  post_slug: slug
+}
+products: {
+  class: table
+  id: serial
+  id.constraint: primary_key
+  name: text
+  category: product_category
+  price: numeric(10, 2)
+  discount_percentage: percentage
+  rating: rating
+  color_code: color_hex
+  weight_kg: numeric(8, 3)
+  size: size_category
+  sku: slug
+  sku.constraint: unique
+  stock_count: positive_integer
+  min_age: age_range
+  max_temperature: temperature_celsius
+  created_at: timestamptz
+  updated_at: timestamptz
+}
+project_members: {
+  class: table
+  id: serial
+  id.constraint: primary_key
+  project_id: int4
+  project_id.constraint: unique foreign_key
+  user_id: int4
+  user_id.constraint: unique foreign_key
+  role: short_text
+  join_year: year_range
+}
+projects: {
+  class: table
+  id: serial
+  id.constraint: primary_key
+  name: short_text
+  description: text
+  completion_percentage: percentage
+  status: valid_status
+  start_year: year_range
+  created_by: int4
+  created_by.constraint: foreign_key
+  created_at: timestamptz
+}
+reviews: {
+  class: table
+  id: serial
+  id.constraint: primary_key
+  user_id: int4
+  user_id.constraint: foreign_key
+  product_id: int4
+  product_id.constraint: foreign_key
+  rating: rating
+  title: short_text
+  review_text: text
+  helpful_votes: positive_integer
+  verified_purchase: bool
+  created_at: timestamptz
+  rating_verification: (verified_purchase = true AND rating >= 1.0) OR (verified_purchase = false AND rating >= 2.0)
+}
+security_settings: {
+  class: table
+  id: serial
+  id.constraint: primary_key
+  user_id: int4
+  user_id.constraint: unique foreign_key
+  password_hash: secure_password
+  allowed_ip: ip_address
+  login_hours: business_hours
+  session_timeout_minutes: positive_integer
+  two_factor_enabled: bool
+  created_at: timestamptz
+  security_logic: (two_factor_enabled = true AND session_timeout_minutes <= 60) OR (two_factor_enabled = false AND session_timeout_minutes <= 120)
+}
+subscriptions: {
+  class: table
+  id: serial
+  id.constraint: primary_key
+  user_id: int4
+  user_id.constraint: foreign_key
+  membership_level: membership_level
+  monthly_price: price_range
+  daily_usage_hours: working_hours
+  auto_renew: bool
+  discount_code: slug
+  valid_until: timestamptz
+  created_at: timestamptz
+  subscription_logic: "(membership_level = 'bronze' AND monthly_price <= 50) OR (membership_level = 'silver' AND (monthly_price BETWEEN 51 AND 150)) OR (membership_level = 'gold' AND (monthly_price BETWEEN 151 AND 500)) OR (membership_level = 'platinum' AND monthly_price > 500)"
+}
+tasks: {
+  class: table
+  id: serial
+  id.constraint: primary_key
+  user_id: int4
+  user_id.constraint: foreign_key
+  title: text
+  description: text
+  priority: priority_level
+  estimated_hours: positive_integer
+  slug: slug
+  slug.constraint: unique
+  created_at: timestamptz
+  updated_at: timestamptz
+}
+user_profiles: {
+  class: table
+  id: serial
+  id.constraint: primary_key
+  user_id: int4
+  user_id.constraint: foreign_key
+  full_address: address
+  contact: contact_info
+  current_mood: mood
+  created_at: timestamptz
+}
+user_profiles_extended: {
+  class: table
+  id: serial
+  id.constraint: primary_key
+  user_id: int4
+  user_id.constraint: unique foreign_key
+  phone: phone_number
+  age: age_range
+  credit_score: credit_score
+  bio: short_text
+  website_slug: slug
+  completion_percentage: percentage
+  birth_year: year_range
+  account_status: valid_status
+  preferred_contact: email_address
+  rating: rating
+  theme_color: color_hex
+  created_at: timestamptz
+  updated_at: timestamptz
+}
+users: {
+  class: table
+  id: serial
+  id.constraint: primary_key
+  username: text
+  username.constraint: unique
+  email: text
+  email.constraint: unique
+  created_at: timestamptz
+  current_mood: mood
+}
+weather_readings: {
+  class: table
+  id: serial
+  id.constraint: primary_key
+  location_id: int4
+  location_id.constraint: foreign_key
+  temperature: temperature_celsius
+  humidity: percentage
+  recorded_at: timestamptz
+  valid_weather_reading: (temperature >= -50 AND humidity >= 0) OR (temperature <= 50 AND humidity <= 100)
+}
+comments.post_id -> posts.id
+user_profiles.user_id -> users.id
+user_profiles_extended.user_id -> users.id
+financial_transactions.user_id -> users.id
+account_balances.user_id -> users.id
+posts.user_id -> users.id
+tasks.user_id -> users.id
+security_settings.user_id -> users.id
+project_members.project_id -> projects.id
+project_members.user_id -> users.id
+weather_readings.location_id -> locations.id
+reviews.user_id -> users.id
+reviews.product_id -> products.id
+projects.created_by -> users.id
+subscriptions.user_id -> users.id
+views: {
+  product_ratings: {
+    class: view
+    id: ""
+    name: ""
+    category: ""
+    review_count: ""
+    average_rating: ""
+    total_helpful_votes: ""
+  }
+  user_activity_summary: {
+    class: view
+    user_id: ""
+    username: ""
+    email: ""
+    current_mood: ""
+    full_address: ""
+    contact: ""
+    post_count: ""
+    comment_count: ""
+    task_count: ""
+    last_post_date: ""
+    last_comment_date: ""
+  }
+  user_financial_summary: {
+    class: view
+    id: ""
+    username: ""
+    current_balance: ""
+    currency: ""
+    credit_limit: ""
+    transaction_count: ""
+    last_transaction_date: ""
+  }
+}
+views.post_comment_count: {
+  class: view
+  post_id: ""
+  title: ""
+  comment_count: ""
+}
+composites: {
+  contact_info: {
+    phone: text
+    email: email_address
+    preferred_contact_method: text
+    class: composite
+  }
+}
+composites.address: {
+  street: text
+  city: text
+  zipcode: text
+  country: text
+  class: composite
+}
+domains: {
+  business_hours: {
+    base_type: pg_catalog.int4
+    constraints: NOT (value < 8 OR value > 18)
+    class: domain
+  }
+  color_hex: {
+    base_type: text
+    constraints: 'value ~* ''^#[0-9A-Fa-f]{6}$'''
+    class: domain
+  }
+  credit_score: {
+    base_type: pg_catalog.int4
+    constraints: value BETWEEN 300 AND 850
+    class: domain
+  }
+  currency_code: {
+    base_type: text
+    constraints: 'value ~ ''^[A-Z]{3}$'''
+    class: domain
+  }
+  email_address: {
+    base_type: text
+    constraints: 'value ~* ''^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'''
+    class: domain
+  }
+  ip_address: {
+    base_type: text
+    constraints: 'value ~ ''^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'''
+    class: domain
+  }
+  latitude: {
+    base_type: pg_catalog.numeric(10, 8)
+    constraints: value BETWEEN -90.0 AND 90.0
+    class: domain
+  }
+  longitude: {
+    base_type: pg_catalog.numeric(11, 8)
+    constraints: value BETWEEN -180.0 AND 180.0
+    class: domain
+  }
+  membership_level: {
+    base_type: text
+    constraints: "value IN ('bronze', 'silver', 'gold', 'platinum') AND length(value) >= 4"
+    class: domain
+  }
+  money_amount: {
+    base_type: pg_catalog.numeric(15, 2)
+    constraints: value >= -999999999999.99 AND value <= 999999999999.99
+    class: domain
+  }
+  percentage: {
+    base_type: pg_catalog.numeric(5, 2)
+    constraints: value >= 0.00 AND value <= 100.00
+    class: domain
+  }
+  phone_number: {
+    base_type: text
+    constraints: 'value ~* ''^\+?[1-9]\d{1,14}$'''
+    class: domain
+  }
+  positive_integer: {
+    base_type: pg_catalog.int4
+    constraints: value > 0
+    class: domain
+  }
+  price_range: {
+    base_type: pg_catalog.numeric(10, 2)
+    constraints: value > 0 AND (value <= 10000 OR value IN (99999.99, 88888.88))
+    class: domain
+  }
+  rating: {
+    base_type: pg_catalog.numeric(2, 1)
+    constraints: value BETWEEN 1.0 AND 5.0
+    class: domain
+  }
+  secure_password: {
+    base_type: text
+    constraints: 'length(value) >= 8 AND value ~ ''[A-Z]'' AND value ~ ''[a-z]'' AND value ~ ''[0-9]'' AND value ~ ''[!@#$%^&*()]'''
+    class: domain
+  }
+  short_text: {
+    base_type: pg_catalog.varchar(50)
+    constraints: length(value) >= 3
+    class: domain
+  }
+  slug: {
+    base_type: text
+    constraints: 'value ~* ''^[a-z0-9]+(?:-[a-z0-9]+)*$'''
+    class: domain
+  }
+  temperature_celsius: {
+    base_type: pg_catalog.numeric(5, 2)
+    constraints: value BETWEEN -273.15 AND 1000.0
+    class: domain
+  }
+  valid_status: {
+    base_type: text
+    constraints: "value IN ('active', 'inactive', 'pending', 'suspended')"
+    class: domain
+  }
+  working_hours: {
+    base_type: pg_catalog.int4
+    constraints: (value BETWEEN 0 AND 24) AND NOT (value IN (1, 2, 3, 4, 5))
+    class: domain
+  }
+  year_range: {
+    base_type: pg_catalog.int4
+    constraints: value BETWEEN 1900 AND 2100
+    class: domain
+  }
+}
+domains.class: domains
+domains.age_range: {
+  base_type: pg_catalog.int4
+  constraints: value >= 13 AND value <= 120
+  class: domain
+}
+enums: {
+  priority_level: {
+    low: ""
+    medium: ""
+    high: ""
+    urgent: ""
+    class: enum
+  }
+  product_category: {
+    electronics: ""
+    clothing: ""
+    books: ""
+    home: ""
+    toys: ""
+    sports: ""
+    class: enum
+  }
+  size_category: {
+    xs: ""
+    s: ""
+    m: ""
+    l: ""
+    xl: ""
+    xxl: ""
+    class: enum
+  }
+}
+enums.class: enums
+enums.mood: {
+  happy: ""
+  sad: ""
+  neutral: ""
+  class: enum
+}
