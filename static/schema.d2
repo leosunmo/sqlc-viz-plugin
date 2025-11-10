@@ -46,9 +46,9 @@ classes: {
 account_balances: {
   class: table
   id: serial
-  id.constraint: primary_key
+  id.constraint: PK
   user_id: int4
-  user_id.constraint: unique foreign_key
+  user_id.constraint: UNQ FK
   current_balance: money_amount
   currency: currency_code
   credit_limit: money_amount
@@ -58,23 +58,23 @@ account_balances: {
 comments: {
   class: table
   id: serial
-  id.constraint: primary_key
+  id.constraint: PK
   post_id: int4
-  post_id.constraint: foreign_key
+  post_id.constraint: FK
   author: text
   body: text
   created_at: timestamptz
   author_email: email_address
   reply_to_comment_id: int4
-  reply_to_comment_id.constraint: foreign_key
+  reply_to_comment_id.constraint: FK
   reply_to_comment_id -> id
 }
 financial_transactions: {
   class: table
   id: serial
-  id.constraint: primary_key
+  id.constraint: PK
   user_id: int4
-  user_id.constraint: foreign_key
+  user_id.constraint: FK
   amount: money_amount
   currency: currency_code
   transaction_type: text
@@ -88,7 +88,7 @@ financial_transactions: {
 locations: {
   class: table
   id: serial
-  id.constraint: primary_key
+  id.constraint: PK
   name: text
   latitude: latitude
   longitude: longitude
@@ -98,9 +98,9 @@ locations: {
 posts: {
   class: table
   id: serial
-  id.constraint: primary_key
+  id.constraint: PK
   user_id: int4
-  user_id.constraint: foreign_key
+  user_id.constraint: FK
   title: text
   body: text
   posted_at: timestamptz
@@ -111,7 +111,7 @@ posts: {
 products: {
   class: table
   id: serial
-  id.constraint: primary_key
+  id.constraint: PK
   name: text
   category: product_category
   price: numeric(10, 2)
@@ -121,7 +121,7 @@ products: {
   weight_kg: numeric(8, 3)
   size: size_category
   sku: slug
-  sku.constraint: unique
+  sku.constraint: UNQ
   stock_count: positive_integer
   min_age: age_range
   max_temperature: temperature_celsius
@@ -131,35 +131,35 @@ products: {
 project_members: {
   class: table
   id: serial
-  id.constraint: primary_key
+  id.constraint: PK
   project_id: int4
-  project_id.constraint: unique foreign_key
+  project_id.constraint: UNQ FK
   user_id: int4
-  user_id.constraint: unique foreign_key
+  user_id.constraint: UNQ FK
   role: short_text
   join_year: year_range
 }
 projects: {
   class: table
   id: serial
-  id.constraint: primary_key
+  id.constraint: PK
   name: short_text
   description: text
   completion_percentage: percentage
   status: valid_status
   start_year: year_range
   created_by: int4
-  created_by.constraint: foreign_key
+  created_by.constraint: FK
   created_at: timestamptz
 }
 reviews: {
   class: table
   id: serial
-  id.constraint: primary_key
+  id.constraint: PK
   user_id: int4
-  user_id.constraint: foreign_key
+  user_id.constraint: FK
   product_id: int4
-  product_id.constraint: foreign_key
+  product_id.constraint: FK
   rating: rating
   title: short_text
   review_text: text
@@ -171,9 +171,9 @@ reviews: {
 security_settings: {
   class: table
   id: serial
-  id.constraint: primary_key
+  id.constraint: PK
   user_id: int4
-  user_id.constraint: unique foreign_key
+  user_id.constraint: UNQ FK
   password_hash: secure_password
   allowed_ip: ip_address
   login_hours: business_hours
@@ -185,9 +185,9 @@ security_settings: {
 subscriptions: {
   class: table
   id: serial
-  id.constraint: primary_key
+  id.constraint: PK
   user_id: int4
-  user_id.constraint: foreign_key
+  user_id.constraint: FK
   membership_level: membership_level
   monthly_price: price_range
   daily_usage_hours: working_hours
@@ -200,24 +200,24 @@ subscriptions: {
 tasks: {
   class: table
   id: serial
-  id.constraint: primary_key
+  id.constraint: PK
   user_id: int4
-  user_id.constraint: foreign_key
+  user_id.constraint: FK
   title: text
   description: text
   priority: priority_level
   estimated_hours: positive_integer
   slug: slug
-  slug.constraint: unique
+  slug.constraint: UNQ
   created_at: timestamptz
   updated_at: timestamptz
 }
 user_profiles: {
   class: table
   id: serial
-  id.constraint: primary_key
+  id.constraint: PK
   user_id: int4
-  user_id.constraint: foreign_key
+  user_id.constraint: FK
   full_address: address
   contact: contact_info
   current_mood: mood
@@ -226,9 +226,9 @@ user_profiles: {
 user_profiles_extended: {
   class: table
   id: serial
-  id.constraint: primary_key
+  id.constraint: PK
   user_id: int4
-  user_id.constraint: unique foreign_key
+  user_id.constraint: UNQ FK
   phone: phone_number
   age: age_range
   credit_score: credit_score
@@ -246,40 +246,40 @@ user_profiles_extended: {
 users: {
   class: table
   id: serial
-  id.constraint: primary_key
+  id.constraint: PK
   username: text
-  username.constraint: unique
+  username.constraint: UNQ
   email: text
-  email.constraint: unique
+  email.constraint: UNQ
   created_at: timestamptz
   current_mood: mood
 }
 weather_readings: {
   class: table
   id: serial
-  id.constraint: primary_key
+  id.constraint: PK
   location_id: int4
-  location_id.constraint: foreign_key
+  location_id.constraint: FK
   temperature: temperature_celsius
   humidity: percentage
   recorded_at: timestamptz
   valid_weather_reading: (temperature >= -50 AND humidity >= 0) OR (temperature <= 50 AND humidity <= 100)
 }
-comments.post_id -> posts.id
-user_profiles.user_id -> users.id
-user_profiles_extended.user_id -> users.id
-financial_transactions.user_id -> users.id
-account_balances.user_id -> users.id
 posts.user_id -> users.id
-tasks.user_id -> users.id
-security_settings.user_id -> users.id
+comments.post_id -> posts.id
+projects.created_by -> users.id
 project_members.project_id -> projects.id
 project_members.user_id -> users.id
+user_profiles_extended.user_id -> users.id
+subscriptions.user_id -> users.id
+tasks.user_id -> users.id
 weather_readings.location_id -> locations.id
 reviews.user_id -> users.id
 reviews.product_id -> products.id
-projects.created_by -> users.id
-subscriptions.user_id -> users.id
+security_settings.user_id -> users.id
+financial_transactions.user_id -> users.id
+user_profiles.user_id -> users.id
+account_balances.user_id -> users.id
 views: {
   product_ratings: {
     class: view

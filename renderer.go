@@ -48,13 +48,13 @@ func renderD2(tables map[string]*Table, tlfk []FK, views map[string]*View, custo
 			}
 			var cons []string
 			if c.PrimaryKey {
-				cons = append(cons, "primary_key")
+				cons = append(cons, "PK")
 			}
 			if c.Unique {
-				cons = append(cons, "unique")
+				cons = append(cons, "UNQ")
 			}
 			if c.ForeignKey != nil {
-				cons = append(cons, "foreign_key")
+				cons = append(cons, "FK")
 			}
 			if len(cons) > 0 {
 				g, err = d2oracle.Set(g, nil, fmt.Sprintf("%s.%s.constraint", title, c.Name), nil, strPtr(strings.Join(cons, " ")))
